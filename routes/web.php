@@ -1,69 +1,122 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PublicRifaController;
-// Futuramente, você pode criar um controller só para o admin:
-// use App\Http\Controllers\Admin\RifaController as AdminRifaController;
+use App\Http\Controllers\PublicBichoController;
+use App\Http\Controllers\PainelJogadorController;
+use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AdminRifaController;
+use App\Http\Controllers\Admin\AdminCompraController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminConfigController;
+use App\Http\Controllers\Admin\AdminBichoController;
+use App\Http\Controllers\Admin\AfiliadosController;
+use App\Http\Controllers\AfiliadoController;
+use App\Http\Controllers\WebhookController;
 
 /*
 |--------------------------------------------------------------------------
-| Web Routes
+| ROTAS PÚBLICAS
 |--------------------------------------------------------------------------
-|
-| Este arquivo define todas as rotas da sua aplicação.
-|
+| Rotas acessíveis a todos os visitantes.
 */
 
-// --- ROTAS PÚBLICAS ---
-// Tudo que qualquer visitante pode ver.
+// Página Inicial
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// 1. Página inicial do Laravel (Opcional, pode remover ou alterar)
-Route::get('/', function () {
-    return view('welcome');
+// Listagem pública de rifas
+Route::get('/rifas', [PublicRifaController::class, 'index'])->name('public.rifas.index');
+
+// Detalhes da rifa, compra e reserva de números
+Route::get('/rifas/{rifa}', [PublicRifaController::class, 'show'])->name('public.rifas.show');
+Route::post('/rifas/{rifa}/reservar', [PublicRifaController::class, 'reservar'])->name('rifa.reservar');
+
+// Página do resultado do Jogo do Bicho
+Route::get('/bicho', [PublicBichoController::class, 'index'])->name('bicho.resultado');
+
+/*
+|--------------------------------------------------------------------------
+| WEBHOOKS DE PAGAMENTO
+|--------------------------------------------------------------------------
+| Rotas para receber notificações de status de pagamento dos gateways.
+*/
+
+Route::post('/webhook/pagbank', [WebhookController::class, 'pagbank'])->name('webhook.pagbank');
+Route::post('/webhook/efi', [WebhookController::class, 'efi'])->name('webhook.efi');
+Route::post('/webhook/paggue', [WebhookController::class, 'paggue'])->name('webhook.paggue');
+Route::post('/webhook/suitpay', [WebhookController::class, 'suitpay'])->name('webhook.suitpay');
+
+/*
+|--------------------------------------------------------------------------
+| AUTENTICAÇÃO
+|--------------------------------------------------------------------------
+| Inclui rotas de login, registro, etc., do Laravel Breeze.
+*/
+
+require __DIR__.'/auth.php';
+
+/*
+|--------------------------------------------------------------------------
+| ÁREA DO USUÁRIO AUTENTICADO
+|--------------------------------------------------------------------------
+| Rotas que exigem que o usuário esteja logado.
+*/
+
+Route::middleware(['auth'])->group(function () {
+    // Painel do Jogador
+    Route::get('/painel', [PainelJogadorController::class, 'index'])->name('painel');
+
+    // Link de Afiliado
+    Route::get('/meu-link', [AfiliadoController::class, 'meuLink'])->name('afiliado.link');
 });
 
-// 2. Página que lista todas as rifas disponíveis para o público
-Route::get('/rifas', [PublicRifaController::class, 'index'])->name('rifas.index');
 
-// 3. Página que mostra os detalhes de UMA rifa específica
-// O {rifa} é um parâmetro dinâmico, por exemplo: /rifas/1 ou /rifas/5
-Route::get('/rifas/{rifa}', [PublicRifaController::class, 'show'])->name('rifas.show');
+/*
+|--------------------------------------------------------------------------
+| PAINEL ADMINISTRATIVO
+|--------------------------------------------------------------------------
+| Todas as rotas administrativas agrupadas e protegidas.
+| Acessível apenas por usuários autenticados que são administradores.
+*/
 
+Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
+    // Dashboard
+    Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
 
-// --- ROTAS ADMINISTRATIVAS ---
-// Ações que SÓ o administrador do site pode realizar.
-// O ideal é proteger essas rotas com um prefixo e autenticação.
+    // Rifas (CRUD)
+    Route::get('rifas', [AdminRifaController::class, 'index'])->name('rifas.index');
+    Route::get('rifas/create', [AdminRifaController::class, 'create'])->name('rifas.create');
+    Route::post('rifas', [AdminRifaController::class, 'store'])->name('rifas.store');
+    Route::get('rifas/{rifa}/edit', [AdminRifaController::class, 'edit'])->name('rifas.edit');
+    Route::put('rifas/{rifa}', [AdminRifaController::class, 'update'])->name('rifas.update');
+    Route::delete('rifas/{rifa}', [AdminRifaController::class, 'destroy'])->name('rifas.destroy');
+    Route::get('rifas/{rifa}/compras', [AdminRifaController::class, 'compras'])->name('rifas.compras');
+    Route::post('rifas/{rifa}/vencedores', [AdminRifaController::class, 'definirVencedores'])->name('rifas.vencedores');
+    Route::post('rifas/{rifa}/sortear', [AdminRifaController::class, 'sortear'])->name('rifas.sortear');
 
-Route::prefix('admin')->middleware(['auth'])->group(function () {
-    
-    // Usando Route::resource, o Laravel cria automaticamente TODAS as rotas 
-    // necessárias para gerenciar (Criar, Ler, Atualizar, Deletar) as rifas.
-    // Isso evita que você tenha que escrever 7 rotas manualmente.
-    
-    // Exemplo: Route::resource('rifas', AdminRifaController::class);
-    
-    // Por enquanto, vamos manter com o seu controller atual para não quebrar nada:
-    
-    // Rota para mostrar o formulário de criação de nova rifa
-    Route::get('/rifas/create', [PublicRifaController::class, 'create'])->name('admin.rifas.create');
-    
-    // Rota para salvar a nova rifa no banco de dados
-    Route::post('/rifas', [PublicRifaController::class, 'store'])->name('admin.rifas.store');
-    
-    // Rota para mostrar o formulário de edição de uma rifa existente
-    Route::get('/rifas/{rifa}/edit', [PublicRifaController::class, 'edit'])->name('admin.rifas.edit');
-    
-    // Rota para atualizar a rifa no banco de dados
-    Route::put('/rifas/{rifa}', [PublicRifaController::class, 'update'])->name('admin.rifas.update');
-    
-    // Rota para deletar uma rifa
-    Route::delete('/rifas/{rifa}', [PublicRifaController::class, 'destroy'])->name('admin.rifas.destroy');
-    
+    // Compras
+    Route::get('compras', [AdminCompraController::class, 'index'])->name('compras.index');
+    Route::get('compras/{compra}', [AdminCompraController::class, 'show'])->name('compras.show');
+    Route::delete('compras/{compra}', [AdminCompraController::class, 'destroy'])->name('compras.destroy');
+
+    // Usuários
+    Route::get('usuarios', [AdminUserController::class, 'index'])->name('usuarios.index');
+    Route::get('usuarios/{user}', [AdminUserController::class, 'show'])->name('usuarios.show');
+    Route::put('usuarios/{user}/inativar', [AdminUserController::class, 'inativar'])->name('usuarios.inativar');
+
+    // Jogo do Bicho
+    Route::get('bicho', [AdminBichoController::class, 'index'])->name('bicho.index');
+    Route::get('bicho/create', [AdminBichoController::class, 'create'])->name('bicho.create');
+    Route::post('bicho', [AdminBichoController::class, 'store'])->name('bicho.store');
+
+    // Afiliados
+    Route::get('afiliados', [AfiliadosController::class, 'index'])->name('afiliados');
+
+    // Configurações Gerais e de Gateway
+    Route::get('configuracoes', [AdminConfigController::class, 'index'])->name('config.index');
+    Route::post('configuracoes', [AdminConfigController::class, 'store'])->name('config.store');
+    Route::get('gateway', [AdminConfigController::class, 'gateway'])->name('gateway');
+    Route::post('gateway', [AdminConfigController::class, 'salvarGateway'])->name('gateway.salvar');
 });
-
-// Rotas de autenticação (login, registro, etc.) que o Laravel pode gerar
-// Se ainda não tiver, execute `composer require laravel/ui` e `php artisan ui bootstrap --auth`
-Auth::routes();
-
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
