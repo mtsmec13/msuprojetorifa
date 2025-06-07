@@ -15,55 +15,35 @@ class PublicRifaController extends Controller
 
     public function show(Rifa $rifa)
     {
-        // Pega todas as compras relacionadas a essa rifa
-        $compras = $rifa->compras()->get();
-
-        // Monta array de todos os números ocupados (pegando do campo JSON)
-        $numerosOcupados = [];
-        foreach ($compras as $compra) {
-            $numeros = json_decode($compra->numeros_escolhidos, true);
-            if (is_array($numeros)) {
-                $numerosOcupados = array_merge($numerosOcupados, $numeros);
-            }
-        }
-
-        // Gera os vencedores como antes
+        $compras = $rifa->compras()->orderBy('numero')->get();
         $vencedores = [];
         for ($i=1; $i<=3; $i++) {
             $num = $rifa->{'numero_sorteado_'.$i};
             $premio = $rifa->{'premio_'.$i};
-            // Busca o ganhador pelo número dentro do array de números escolhidos
-            $ganhador = null;
-            foreach ($compras as $compra) {
-                $numeros = json_decode($compra->numeros_escolhidos, true);
-                if (is_array($numeros) && in_array($num, $numeros)) {
-                    $ganhador = $compra;
-                    break;
-                }
-            }
+            $ganhador = $num ? $compras->where('numero', $num)->first() : null;
             if ($num && $premio) {
                 $vencedores[] = [
                     'colocacao' => $i,
                     'numero' => $num,
                     'premio' => $premio,
-                    'nome' => $ganhador ? $ganhador->nome_comprador : null,
-                    'whatsapp' => $ganhador ? $ganhador->telefone : null,
+                    'nome' => $ganhador ? $ganhador->nome : null,
+                    'whatsapp' => $ganhador ? $ganhador->whatsapp : null,
                 ];
             }
         }
-
-        return view('public.rifas.show', compact('rifa', 'vencedores', 'numerosOcupados'));
+        return view('public.rifas.show', compact('rifa', 'vencedores'));
     }
     
     public function ranking()
     {
         $ranking = \DB::table('compras')
-            ->select('nome_comprador', 'telefone', \DB::raw('count(*) as total_compras'))
-            ->groupBy('nome_comprador', 'telefone')
+            ->select('nome', 'whatsapp', \DB::raw('count(*) as total_compras'))
+            ->groupBy('nome', 'whatsapp')
             ->orderByDesc('total_compras')
             ->limit(50)
             ->get();
 
         return view('public.rifas.ranking', compact('ranking'));
     }
+
 }
