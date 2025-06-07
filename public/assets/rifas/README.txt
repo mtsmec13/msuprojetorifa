@@ -1,0 +1,1 @@
+Coloque aqui os assets de banners, icones e backgrounds para rifas.
