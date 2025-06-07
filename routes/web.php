@@ -10,15 +10,34 @@ use App\Http\Controllers\AdminCompraController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminConfigController;
 use App\Http\Controllers\AdminBichoController;
-
+use App\Http\Controllers\dashboardController;
+use App\Http\Controllers\AdminController;
 /*
 |--------------------------------------------------------------------------
 | ROTAS PÚBLICAS
 |--------------------------------------------------------------------------
 */
 
+Route::prefix('admin')->middleware(['auth'])->group(function () {
+    Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/rifas', [AdminController::class, 'rifas'])->name('admin.rifas');
+    Route::get('/usuarios', [AdminController::class, 'usuarios'])->name('admin.usuarios');
+    Route::get('/compras', [AdminController::class, 'compras'])->name('admin.compras');
+    Route::get('/configuracoes', [AdminController::class, 'configuracoes'])->name('admin.configuracoes');
+    Route::post('/configuracoes', [AdminController::class, 'salvarConfiguracoes'])->name('admin.configuracoes.salvar');
+    Route::get('/gateway', [AdminController::class, 'gateway'])->name('admin.gateway');
+    Route::post('/gateway', [AdminController::class, 'salvarGateway'])->name('admin.gateway.salvar');
+});
+
+Route::get('/dashboard', [PublicRifaController::class, 'dashboard'])->name('dashboard');
 // Home
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Rota para exibir o detalhe da rifa (provavelmente já existe)
+Route::get('/rifas/{id}', [PublicRifaController::class, 'show'])->name('public.rifas.show');
+
+// Rota para reservar/comprar um número na rifa
+Route::post('/rifas/{id}/reservar', [PublicRifaController::class, 'reservar'])->name('rifa.reservar');
 
 // Rifas públicas (listagem e detalhes)
 Route::get('/rifas', [PublicRifaController::class, 'index'])->name('public.rifas.index');
@@ -105,3 +124,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/meu-link', [\App\Http\Controllers\AfiliadoController::class, 'meuLink'])->name('afiliado.link');
 });
+
+// Gateways RESERVAS
+Route::post('/rifas/{id}/reservar-pix-efi', [PublicRifaController::class, 'reservarPixEfi'])->name('rifa.reservar.pix.efi');
+Route::post('/efi/pix/webhook', [PublicRifaController::class, 'efiPixWebhook'])->name('efi.pix.webhook');
+Route::post('/rifas/{id}/reservar-pix-pagbank', [PublicRifaController::class, 'reservarPixPagbank'])->name('rifa.reservar.pix.pagbank');
+Route::post('/pagbank/pix/webhook', [PublicRifaController::class, 'pagbankPixWebhook'])->name('pagbank.pix.webhook');

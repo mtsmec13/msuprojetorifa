@@ -7,19 +7,26 @@ use App\Models\Rifa;
 class HomeController extends Controller
 {
     public function index()
-    {
-        $rifas = Rifa::orderBy('created_at', 'desc')->get();
+{
+    $premiosDestaque = \App\Models\Rifa::where('status', 'ativa')
+        ->orderByDesc('created_at')
+        ->limit(6)
+        ->get();
 
-        // Rifas do banner (ativas e marcadas)
-        $banners = Rifa::where('mostrar_banner', 1)
-            ->where(function($q){
-                $q->whereNull('numero_sorteado_1')
-                    ->whereNull('numero_sorteado_2')
-                    ->whereNull('numero_sorteado_3');
-            })
-            ->orderBy('data_sorteio')
-            ->get();
+    return view('home', [
+        'premiosDestaque' => $premiosDestaque
+    ]);
+}
+    public function home()
+{
+    // Busca as rifas ativas como prêmios em destaque
+    $premiosDestaque = \App\Models\Rifa::where('status', 'ativa')
+        ->orderByDesc('created_at')
+        ->limit(6)
+        ->get();
 
-        return view('home', compact('rifas', 'banners'));
-    }
+    return view('home', [
+        'premiosDestaque' => $premiosDestaque
+    ]);
+}
 }
